@@ -7,11 +7,13 @@ import buttons
 from screen_fade import ScreenFade
 import math
 from healthbar import HealthBar
-from traps import Trap
+from menu import Menu
+from win_msg import WinScreen
 
-mixer.init()
+
 pygame.init()
-
+mixer.init()
+   
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = int(SCREEN_WIDTH * 0.8)
@@ -21,26 +23,21 @@ pygame.display.set_caption('Shooter')
 
 #set framerate
 clock = pygame.time.Clock()
-FPS = 70
+FPS = 60
 
 #define game variables
-GRAVITY = 0.30
+GRAVITY = 0.4
 SCROLL_THRESH = 200
 ROWS = 16
 COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 21
-MAX_LEVELS = 7
+MAX_LEVELS = 1
 screen_scroll = 0
 bg_scroll = 0
-level = 0
+level = 1
 start_game = False
 start_intro = False
-
-
-trap = Trap(100, 100)  # create a trap at (100, 100)
-trap_group = pygame.sprite.Group()
-trap_group.add(trap)
 
 #define player action variables
 moving_left = False
@@ -51,9 +48,9 @@ grenade_thrown = False
 
 
 #load music and sounds
-#pygame.mixer.music.load('audio/music2.mp3')
-#pygame.mixer.music.set_volume(0.3)
-#pygame.mixer.music.play(-1, 0.0, 5000)
+pygame.mixer.music.load('assets/audio/music2.mp3')
+pygame.mixer.music.set_volume(0.1)
+pygame.mixer.music.play(-1, 0.0, 5000)
 jump_fx = pygame.mixer.Sound('assets/audio/jump.wav')
 jump_fx.set_volume(0.05)
 shot_fx = pygame.mixer.Sound('assets/audio/shot.wav')
@@ -67,12 +64,9 @@ grenade_fx.set_volume(0.05)
 start_img = pygame.image.load('assets/images/button_image/start_btn.png').convert_alpha()
 exit_img = pygame.image.load('assets/images/button_image/exit_btn.png').convert_alpha()
 restart_img = pygame.image.load('assets/images/button_image/restart_btn.png').convert_alpha()
-# #background
-# pine1_img = pygame.image.load('img/Background/pine1.png').convert_alpha()
-# pine2_img = pygame.image.load('img/Background/pine2.png').convert_alpha()
-# mountain_img = pygame.image.load('img/Background/mountain.png').convert_alpha()
-sky_img = pygame.image.load('assets/images/bg_image/background.png').convert_alpha()
-#store tiles in a list
+bg_img=pygame.image.load('assets/images/bg_image/bg.png')
+bg_img = pygame.transform.scale(bg_img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+#store tiles in a lista
 img_list = []
 for x in range(TILE_TYPES):
 	img = pygame.image.load(f'assets/images/tile/{x}.png')
@@ -111,12 +105,9 @@ def draw_text(text, font, text_col, x, y):
 
 def draw_bg():
 	screen.fill(BG)
-	width = sky_img.get_width()
+	width = bg_img.get_width()
 	for x in range(5):
-		screen.blit(sky_img, ((x * width) - bg_scroll * 0.5, 0))
-		# screen.blit(mountain_img, ((x * width) - bg_scroll * 0.6, SCREEN_HEIGHT - mountain_img.get_height() - 300))
-		# screen.blit(pine1_img, ((x * width) - bg_scroll * 0.7, SCREEN_HEIGHT - pine1_img.get_height() - 150))
-		# screen.blit(pine2_img, ((x * width) - bg_scroll * 0.8, SCREEN_HEIGHT - pine2_img.get_height()))
+		screen.blit(bg_img, ((x * width) - bg_scroll * 0.5, 0))
 
 
 #function to reset level
@@ -190,7 +181,7 @@ class Soldier(pygame.sprite.Sprite):
 
 	def update(self):
 		self.update_animation()
-		self.check_alive()
+		self.check_LEFTlive()
 		#update cooldown
 		if self.shoot_cooldown > 0:
 			self.shoot_cooldown -= 1
@@ -355,7 +346,7 @@ class Soldier(pygame.sprite.Sprite):
 
 
 
-	def check_alive(self):
+	def check_LEFTlive(self):
 		if self.health <= 0:
 			self.health = 0
 			self.speed = 0
@@ -466,19 +457,15 @@ class ItemBox(pygame.sprite.Sprite):
 		if pygame.sprite.collide_rect(self, player):
 			#check what kind of box it was
 			if self.item_type == 'Health':
-				player.health += 25
+				player.health += 40
 				if player.health > player.max_health:
 					player.health = player.max_health
 			elif self.item_type == 'Ammo':
-				player.ammo += 15
+				player.ammo += 20
 			elif self.item_type == 'Grenade':
-				player.grenades += 3
+				player.grenades += 5
 			#delete the item box
 			self.kill()
-
-
-
-
 
 class Bullet(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction):
@@ -503,7 +490,7 @@ class Bullet(pygame.sprite.Sprite):
 		#check collision with characters
 		if pygame.sprite.spritecollide(player, bullet_group, False):
 			if player.alive:
-				player.health -= 5
+				player.health -= 10
 				self.kill()
 		for enemy in enemy_group:
 			if pygame.sprite.spritecollide(enemy, bullet_group, False):
@@ -516,7 +503,7 @@ class Bullet(pygame.sprite.Sprite):
 class Grenade(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction):
 		pygame.sprite.Sprite.__init__(self)
-		self.timer = 150
+		self.timer = 100
 		self.vel_y = -9
 		self.speed = 7
 		self.image = grenade_img
@@ -612,7 +599,7 @@ death_fade = ScreenFade(direction=1, colour=(0, 0, 0), speed=3)
 #create buttons
 start_button = buttons.Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 150, start_img, 1)
 exit_button = buttons.Button(SCREEN_WIDTH // 2 - 110, SCREEN_HEIGHT // 2 + 50, exit_img, 1)
-restart_button = buttons.Button(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50, restart_img, 2)
+restart_button = buttons.Button(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50, restart_img, 1.5)
 
 #create sprite groups
 enemy_group = pygame.sprite.Group()
@@ -641,160 +628,200 @@ world = World()
 player, health_bar = world.process_data(world_data)
 
 
+menu = Menu(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
 
+
+# Assume you have a function to return to the main menu
+def return_to_menu():
+    global start_game, game_state, level, bg_scroll, world, player, health_bar
+    # Reset necessary variables
+    start_game = False
+    game_state = "menu"
+    level = 4
+    bg_scroll = 0
+    world_data = reset_level()
+    with open(f'data/level{level}_data.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        for x, row in enumerate(reader):
+            for y, tile in enumerate(row):
+                world_data[x][y] = int(tile)
+    world = World()
+    player, health_bar = world.process_data(world_data)
+
+# Create win screen instance (assuming 'screen' and 'font' are defined)
+win_screen = WinScreen(screen, font, return_to_menu)
+
+game_state = "menu"  # Other states: "playing", "win"
+    
 run = True
 while run:
+    # Capture events once per frame
+    events = pygame.event.get()
+    
+    # Global event handling (quit and ESCAPE)
+    for event in events:
+        if event.type == pygame.QUIT:
+            run = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                run = False
 
-	clock.tick(FPS)
+    # ----------------- MENU STATE ------------------
+    if game_state == "menu":
+	   
+        # Call your menu run function (it can also receive events if needed)
+        player.moving_right = False
+        player.moving_left = False
+        player.velocity_x = 0  # Stop any movement
+        choice = menu.run()
+        if choice in ['Level 1', 'Level 2', 'Level 3', 'Level 4']:
+            level = int(choice.split()[-1])  # Extract level number from choice
+            start_game = True
+            start_intro = True  # For any intro logic
+            game_state = "playing"  # Switch to playing state
+        elif choice == 'Quit':
+            run = False
 
-	if start_game == False:
-		#draw menu
-		screen.fill(BG)
-		#add buttons
-		if start_button.draw(screen):
-			start_game = True
-			start_intro = True
-		if exit_button.draw(screen):
-			run = False
-	else:
-		#update background
-		draw_bg()
-		#draw world map
-		world.draw()
-		#show player health
-		health_bar.draw(player.health)
-		#show ammo
-		draw_text('AMMO: ', font, WHITE, 10, 35)
-		for x in range(player.ammo):
-			screen.blit(bullet_img, (90 + (x * 10), 40))
-		#show grenades
-		draw_text('GRENADES: ', font, WHITE, 10, 60)
-		for x in range(player.grenades):
-			screen.blit(grenade_img, (135 + (x * 15), 60))
+    # ----------------- PLAYING STATE ------------------
+    elif game_state == "playing":
+        # Process gameplay-related events
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    moving_left = True
+                if event.key == pygame.K_RIGHT:
+                    moving_right = True
+                if event.key == pygame.K_SPACE:
+                    shoot = True
+                if event.key == pygame.K_RSHIFT:
+                    grenade = True
+                if event.key == pygame.K_UP and player.alive:
+                    player.jump = True
+                    jump_fx.play()  # Uncomment if you have a jump sound
 
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    moving_left = False
+                if event.key == pygame.K_RIGHT:
+                    moving_right = False
+                if event.key == pygame.K_SPACE:
+                    shoot = False
+                if event.key == pygame.K_RSHIFT:
+                    grenade = False
+                    grenade_thrown = False
 
-		player.update()
-		player.draw()
+        # Update background and world elements
+        draw_bg()
+        world.draw()
+        health_bar.draw(player.health)
 
-		trap_group.update()
-		trap_group.draw(screen)
+        # Display ammo and grenades
+        draw_text('AMMO: ', font, WHITE, 10, 35)
+        for x in range(player.ammo):
+            screen.blit(bullet_img, (90 + (x * 10), 40))
+        draw_text('GRENADES: ', font, WHITE, 10, 60)
+        for x in range(player.grenades):
+            screen.blit(grenade_img, (135 + (x * 15), 60))
 
-		for enemy in enemy_group:
-			enemy.ai()
-			enemy.update()
-			enemy.draw()
+        # Update player
+        player.update()
+        player.draw()
 
-		#update and draw groups
-		bullet_group.update()
-		grenade_group.update()
-		explosion_group.update()
-		item_box_group.update()
-		decoration_group.update()
-		water_group.update()
-		exit_group.update()
-		bullet_group.draw(screen)
-		grenade_group.draw(screen)
-		explosion_group.draw(screen)
-		item_box_group.draw(screen)
-		decoration_group.draw(screen)
-		water_group.draw(screen)
-		exit_group.draw(screen)
+        # Update enemies and other sprite groups
+        for enemy in enemy_group:
+            enemy.ai()
+            enemy.update()
+            enemy.draw()
 
-		#show intro
-		if start_intro == True:
-			if intro_fade.fade():
-				start_intro = False
-				intro_fade.fade_counter = 0
+        bullet_group.update()
+        grenade_group.update()
+        explosion_group.update()
+        item_box_group.update()
+        decoration_group.update()
+        water_group.update()
+        exit_group.update()
 
+        bullet_group.draw(screen)
+        grenade_group.draw(screen)
+        explosion_group.draw(screen)
+        item_box_group.draw(screen)
+        decoration_group.draw(screen)
+        water_group.draw(screen)
+        exit_group.draw(screen)
 
-		#update player actions
-		if player.alive:
-			#shoot bullets
-			if shoot:
-				player.shoot()
-			#throw grenades
-			elif grenade and grenade_thrown == False and player.grenades > 0:
-				grenade = Grenade(player.rect.centerx + (0.5 * player.rect.size[0] * player.direction),\
-				 			player.rect.top, player.direction)
-				grenade_group.add(grenade)
-				#reduce grenades
-				player.grenades -= 1
-				grenade_thrown = True
-			if player.in_air:
-				player.update_action(2)#2: jump
-			elif moving_left or moving_right:
-				player.update_action(1)#1: run
-			else:
-				player.update_action(0)#0: idle
-			screen_scroll, level_complete = player.move(moving_left, moving_right)
-			bg_scroll -= screen_scroll
-			#check if player has completed the level
-			if level_complete:
-				start_intro = True
-				level += 1
-				bg_scroll = 0
-				world_data = reset_level()
-				if level <= MAX_LEVELS:
-					#load in level data and create world
-					with open(f'data/level{level}_data.csv', newline='') as csvfile:
-						reader = csv.reader(csvfile, delimiter=',')
-						for x, row in enumerate(reader):
-							for y, tile in enumerate(row):
-								world_data[x][y] = int(tile)
-					world = World()
-					player, health_bar = world.process_data(world_data)	
-		else:
-			screen_scroll = 0
-			if death_fade.fade():
-				if restart_button.draw(screen):
-					death_fade.fade_counter = 0
-					start_intro = True
-					bg_scroll = 0
-					world_data = reset_level()
-					#load in level data and create world
-					with open(f'data/level{level}_data.csv', newline='') as csvfile:
-						reader = csv.reader(csvfile, delimiter=',')
-						for x, row in enumerate(reader):
-							for y, tile in enumerate(row):
-								world_data[x][y] = int(tile)
-					world = World()
-					player, health_bar = world.process_data(world_data)
+        # Handle any intro fade if applicable
+        if start_intro:
+            if intro_fade.fade():
+                start_intro = False
+                intro_fade.fade_counter = 0
 
+        # Process player actions
+        if player.alive:
+            if shoot:
+                player.shoot()
+            elif grenade and not grenade_thrown and player.grenades > 0:
+                new_grenade = Grenade(
+                    player.rect.centerx + (0.5 * player.rect.size[0] * player.direction),
+                    player.rect.top,
+                    player.direction
+                )
+                grenade_group.add(new_grenade)
+                player.grenades -= 1
+                grenade_thrown = True
 
-	for event in pygame.event.get():
-		#quit game
-		if event.type == pygame.QUIT:
-			run = False
-		#keyboard presses
-		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_a:
-				moving_left = True
-			if event.key == pygame.K_d:
-				moving_right = True
-			if event.key == pygame.K_SPACE:
-				shoot = True
-			if event.key == pygame.K_RSHIFT:
-				grenade = True
-			if event.key == pygame.K_w and player.alive:
-				player.jump = True
-				jump_fx.play()
-			if event.key == pygame.K_ESCAPE:
-				run = False
+            if player.in_air:
+                player.update_action(2)  # Jump action
+            elif moving_left or moving_right:
+                player.update_action(1)  # Run action
+            else:
+                player.update_action(0)  # Idle action
 
+            screen_scroll, level_complete = player.move(moving_left, moving_right)
+            bg_scroll -= screen_scroll
 
-		#keyboard button released
-		if event.type == pygame.KEYUP:
-			if event.key == pygame.K_a:
-				moving_left = False
-			if event.key == pygame.K_d:
-				moving_right = False
-			if event.key == pygame.K_SPACE:
-				shoot = False
-			if event.key == pygame.K_RSHIFT:
-				grenade = False
-				grenade_thrown = False
+            # When level is completed, load next level or switch to win state
+            if level_complete:
+                start_intro = True
+                level += 1
+                bg_scroll = 0
+                world_data = reset_level()
 
+                if level <= MAX_LEVELS:
+                    with open(f'data/level{level}_data.csv', newline='') as csvfile:
+                        reader = csv.reader(csvfile, delimiter=',')
+                        for x, row in enumerate(reader):
+                            for y, tile in enumerate(row):
+                                world_data[x][y] = int(tile)
+                    world = World()
+                    player, health_bar = world.process_data(world_data)
+                else:
+                    # Completed the final level; switch to win state
+                    game_state = "win"
 
-	pygame.display.update()
+        else:
+            # Player is not alive (Game Over logic)
+            screen_scroll = 0
+            if death_fade.fade():
+                if restart_button.draw(screen):
+                    death_fade.fade_counter = 0
+                    start_intro = True
+                    bg_scroll = 0
+                    world_data = reset_level()
+                    with open(f'data/level{level}_data.csv', newline='') as csvfile:
+                        reader = csv.reader(csvfile, delimiter=',')
+                        for x, row in enumerate(reader):
+                            for y, tile in enumerate(row):
+                                world_data[x][y] = int(tile)
+                    world = World()
+                    player, health_bar = world.process_data(world_data)
+
+    # ----------------- WIN STATE ------------------
+    elif game_state == "win":
+        # Dispatch win screen events and update drawing
+        win_screen.handle_events(events)
+        win_screen.draw()
+
+    clock.tick(FPS)
+    pygame.display.update()
 
 pygame.quit()

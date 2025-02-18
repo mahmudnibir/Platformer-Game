@@ -1,132 +1,146 @@
 import pygame
-import sys
 
-# Initialize Pygame
-pygame.init()
+class Menu:
+    def __init__(self, screen, screen_width, screen_height):
+        self.screen = screen
+        self.screen_width = screen_width
+        self.screen_height = screen_height
 
-# Screen settings
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("2D Game Menu")
+        # Modern fonts
+        self.font = pygame.font.SysFont("Arial", 50)
+        self.small_font = pygame.font.SysFont("Arial", 30)
+        self.button_size = (220, 60)
 
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
+        # Colors
+        self.button_color = (52, 152, 219)
+        self.hover_color = (41, 128, 185)
+        self.text_color = (255, 255, 255)
+        self.bg_color = (236, 240, 241)
+        self.help_bg_color = (44, 62, 80)
 
-# Fonts
-font = pygame.font.SysFont(None, 55)
-small_font = pygame.font.SysFont(None, 35)
+        # Main menu buttons
+        self.main_buttons = {
+            'Play': (self.screen_width // 2, self.screen_height // 2 - 120),
+            'Help': (self.screen_width // 2, self.screen_height // 2),
+            'Quit': (self.screen_width // 2, self.screen_height // 2 + 120)
+        }
 
-# Functions to draw text
-def draw_text(text, font, color, surface, x, y):
-    text_obj = font.render(text, True, color)
-    text_rect = text_obj.get_rect(center=(x, y))
-    surface.blit(text_obj, text_rect)
+        # Level menu buttons
+        self.level_buttons = {
+            'Level 1': (self.screen_width // 2 - 150, self.screen_height // 2 - 80),
+            'Level 2': (self.screen_width // 2 + 150, self.screen_height // 2 - 80),
+            'Level 3': (self.screen_width // 2 - 150, self.screen_height // 2 + 40),
+            'Level 4': (self.screen_width // 2 + 150, self.screen_height // 2 + 40),
+            'Back':    (80, 80)
+        }
 
-# Confirmation dialog for quitting
-def quit_confirmation():
-    while True:
-        screen.fill(WHITE)
-        draw_text("Are you sure you want to quit?", font, BLACK, screen, WIDTH // 2, HEIGHT // 3)
+        # Help menu button
+        self.help_buttons = {'Back': (80, 80)}
 
-        # Yes button
+        self.current_menu = 'main'
+
+    def draw_text(self, text, font, color, x, y):
+        text_obj = font.render(text, True, color)
+        text_rect = text_obj.get_rect(center=(x, y))
+        self.screen.blit(text_obj, text_rect)
+
+    def draw_button(self, label, x, y, color, hover_color):
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
-        if WIDTH // 2 - 100 <= mouse[0] <= WIDTH // 2 + 100 and HEIGHT // 2 - 25 <= mouse[1] <= HEIGHT // 2 + 25:
-            pygame.draw.rect(screen, GREEN, [WIDTH // 2 - 100, HEIGHT // 2 - 25, 200, 50])
+        rect = pygame.Rect(x - self.button_size[0] // 2, y - self.button_size[1] // 2, *self.button_size)
+
+        # Button shadow
+        shadow_rect = rect.copy()
+        shadow_rect.move_ip(3, 3)
+        pygame.draw.rect(self.screen, (200, 200, 200), shadow_rect, border_radius=10)
+
+        if rect.collidepoint(mouse):
+            pygame.draw.rect(self.screen, hover_color, rect, border_radius=10)
             if click[0] == 1:
-                pygame.quit()
-                sys.exit()
+                return label
         else:
-            pygame.draw.rect(screen, BLACK, [WIDTH // 2 - 100, HEIGHT // 2 - 25, 200, 50])
-        draw_text('Yes', font, WHITE, screen, WIDTH // 2, HEIGHT // 2)
+            pygame.draw.rect(self.screen, color, rect, border_radius=10)
 
-        # No button
-        if WIDTH // 2 - 100 <= mouse[0] <= WIDTH // 2 + 100 and HEIGHT // 2 + 75 <= mouse[1] <= HEIGHT // 2 + 125:
-            pygame.draw.rect(screen, RED, [WIDTH // 2 - 100, HEIGHT // 2 + 75, 200, 50])
-            if click[0] == 1:
-                return  # Return to the main menu
-        else:
-            pygame.draw.rect(screen, BLACK, [WIDTH // 2 - 100, HEIGHT // 2 + 75, 200, 50])
-        draw_text('No', font, WHITE, screen, WIDTH // 2, HEIGHT // 2 + 100)
+        self.draw_text(label, self.font, self.text_color, x, y)
+        return None
 
-        # Event handling
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+    def display_help(self):
+        running = True
+        while running:
+            self.screen.fill(self.help_bg_color)
+            self.draw_text('Controls', self.font, (255, 255, 255), self.screen_width // 2, 100)
 
-        pygame.display.update()
+            # Key bindings in a modern way
+            controls = [
+                ('Move Right:', '→ Right Arrow'),
+                ('Move Left:', '← Left Arrow'),
+                ('Jump:', '↑ Up Arrow'),
+                ('Shoot:', 'Spacebar'),
+                ('Throw Grenade:', 'Shift')
+            ]
+            
+            for i, (action, key) in enumerate(controls):
+                self.draw_text(f'{action} {key}', self.small_font, (255, 255, 255),
+                               self.screen_width // 2, 200 + i * 50)
+            
+            back_button = self.draw_button('Back', self.help_buttons['Back'][0], self.help_buttons['Back'][1],
+                                           self.button_color, self.hover_color)
+            if back_button == 'Back':
+                self.current_menu = 'main'
+                return None
 
-# Main menu function
-def main_menu():
-    while True:
-        screen.fill(WHITE)  # Background color
-        draw_text('Main Menu', font, BLACK, screen, WIDTH // 2, HEIGHT // 4)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
 
-        # Create buttons
-        mouse = pygame.mouse.get_pos()
-        click = pygame.mouse.get_pressed()
+            pygame.display.update()
 
-        # Play Button
-        if WIDTH // 2 - 100 <= mouse[0] <= WIDTH // 2 + 100 and HEIGHT // 2 - 25 <= mouse[1] <= HEIGHT // 2 + 25:
-            pygame.draw.rect(screen, BLUE, [WIDTH // 2 - 100, HEIGHT // 2 - 25, 200, 50])
-            if click[0] == 1:
-                game_loop()  # Start the game loop
-        else:
-            pygame.draw.rect(screen, BLACK, [WIDTH // 2 - 100, HEIGHT // 2 - 25, 200, 50])
-        draw_text('Play', font, WHITE, screen, WIDTH // 2, HEIGHT // 2)
+    def level_menu(self):
+        while True:
+            self.screen.fill(self.bg_color)
+            self.draw_text('Select Level', self.font, (44, 62, 80), self.screen_width // 2, self.screen_height // 4)
 
-        # Settings Button
-        if WIDTH // 2 - 100 <= mouse[0] <= WIDTH // 2 + 100 and HEIGHT // 2 + 75 <= mouse[1] <= HEIGHT // 2 + 125:
-            pygame.draw.rect(screen, BLUE, [WIDTH // 2 - 100, HEIGHT // 2 + 75, 200, 50])
-            if click[0] == 1:
-                print("Settings")  # You can replace this with a settings function
-        else:
-            pygame.draw.rect(screen, BLACK, [WIDTH // 2 - 100, HEIGHT // 2 + 75, 200, 50])
-        draw_text('Settings', font, WHITE, screen, WIDTH // 2, HEIGHT // 2 + 100)
+            for label, (x, y) in self.level_buttons.items():
+                selected_button = self.draw_button(label, x, y, self.button_color, self.hover_color)
+                if selected_button:
+                    if selected_button == 'Back':
+                        self.current_menu = 'main'
+                        return None
+                    return selected_button
 
-        # Level Button
-        if WIDTH // 2 - 100 <= mouse[0] <= WIDTH // 2 + 100 and HEIGHT // 2 + 175 <= mouse[1] <= HEIGHT // 2 + 225:
-            pygame.draw.rect(screen, BLUE, [WIDTH // 2 - 100, HEIGHT // 2 + 175, 200, 50])
-            if click[0] == 1:
-                print("Level Select")  # You can replace this with level selection logic
-        else:
-            pygame.draw.rect(screen, BLACK, [WIDTH // 2 - 100, HEIGHT // 2 + 175, 200, 50])
-        draw_text('Level', font, WHITE, screen, WIDTH // 2, HEIGHT // 2 + 200)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
 
-        # Quit Button
-        if WIDTH // 2 - 100 <= mouse[0] <= WIDTH // 2 + 100 and HEIGHT // 2 + 275 <= mouse[1] <= HEIGHT // 2 + 325:
-            pygame.draw.rect(screen, RED, [WIDTH // 2 - 100, HEIGHT // 2 + 275, 200, 50])
-            if click[0] == 1:
-                quit_confirmation()  # Show confirmation dialog
-        else:
-            pygame.draw.rect(screen, BLACK, [WIDTH // 2 - 100, HEIGHT // 2 + 275, 200, 50])
-        draw_text('Quit', font, WHITE, screen, WIDTH // 2, HEIGHT // 2 + 300)
+            pygame.display.update()
 
-        # Event handling
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+    def run(self):
+        while True:
+            self.screen.fill(self.bg_color)
 
-        pygame.display.update()
+            if self.current_menu == 'main':
+                for label, (x, y) in self.main_buttons.items():
+                    selected_button = self.draw_button(label, x, y, self.button_color, self.hover_color)
+                    if selected_button:
+                        if selected_button == 'Play':
+                            self.current_menu = 'levels'
+                            return None
+                        elif selected_button == 'Help':
+                            self.display_help()
+                        elif selected_button == 'Quit':
+                            pygame.quit()
+                            return
 
-# Dummy game loop
-def game_loop():
-    running = True
-    while running:
-        screen.fill(WHITE)
-        draw_text('Game Running...', font, BLACK, screen, WIDTH // 2, HEIGHT // 2)
+            elif self.current_menu == 'levels':
+                selected_level = self.level_menu()
+                if selected_level:
+                    return selected_level
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
 
-        pygame.display.update()
-
-# Run the menu
-main_menu()
+            pygame.display.update()
